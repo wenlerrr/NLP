@@ -202,9 +202,10 @@ def countObs(_StarReview):
     _starDict = {}
     for review in _StarReview:
         set_of_adj = set()
-        for x in review:
-            if x[1] in jjList:
-                set_of_adj.add(x[0])
+        for sentence in review:
+            for x in sentence:
+                if x[1] in jjList:
+                    set_of_adj.add(x[0])
         for item in set_of_adj:
             _starDict[item] = _starDict.get(item, 0) + 1
         return _starDict
@@ -227,7 +228,7 @@ if __name__ == "__main__":
 
     data = []
     file_name = './raw/reviewSamples20.json'
-    #file_name = './raw/reviewSelected100.json'
+    # file_name = './raw/reviewSelected100.json'
     with open(file_name) as file:
         for line in file:
             data.append(line)
@@ -278,7 +279,8 @@ if __name__ == "__main__":
         ratingsDF =  df[df['stars'] == i]
         top_10_num_sentences.append(find_most_frequent(ratingsDF.to_dict(orient='records'), "num_sentences", 10))
         l = list(df[df['stars'] == i]['posTag'])
-        _StarReview = [item for subList in l for item in subList]
+        # _StarReview = [item for subList in l for item in subList]
+        _StarReview = [subList for subList in l ]
         AdjList.append([item2 for subList in l for item in subList for item2 in item])
 
         # Count Rating for 1 Star
