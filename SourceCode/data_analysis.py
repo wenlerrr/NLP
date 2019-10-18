@@ -9,6 +9,7 @@ from nltk.tokenize import sent_tokenize, word_tokenize
 import multiprocessing
 import sys
 import string
+import math
 import pickle
 from collections import Counter
 import pandas as pd
@@ -198,7 +199,6 @@ def countAdj(Adjs):
     return counts_dict
 
 def countObs(_StarReview):
-    print("STAR R", _StarReview)
     _starDict = {}
     for review in _StarReview:
         set_of_adj = set()
@@ -208,8 +208,21 @@ def countObs(_StarReview):
                     set_of_adj.add(x[0])
         for item in set_of_adj:
             _starDict[item] = _starDict.get(item, 0) + 1
-        return _starDict
+    return _starDict
 
+def computeIndicativeness(allReviewsList, reviewListAdj):
+    indicativeProp = []
+    nWords = sum(allReviewsList.values())
+
+    for i in range (1,6):
+        indicative_dict = {}
+        nWordsRating = sum(reviewListAdj[i - 1].values())
+        for word in reviewListAdj[i - 1]:
+            pw_r = reviewListAdj[i - 1][word] / nWordsRating
+            pw = allReviewsList[word] / nWords
+            indicative_dict[word] = pw_r * math.log(pw_r / pw)
+        indicativeProp.append(indicative_dict)
+        print('top 10 adj for ',i,'star review are: ', Counter(indicative_dict).most_common(10))
 
 
 if __name__ == "__main__":
@@ -227,8 +240,8 @@ if __name__ == "__main__":
     #print("Data is not processed yet. Processing now...")
 
     data = []
-    file_name = './raw/reviewSamples20.json'
-    # file_name = './raw/reviewSelected100.json'
+    #file_name = './raw/reviewSamples20.json'
+    file_name = './raw/reviewSelected100.json'
     with open(file_name) as file:
         for line in file:
             data.append(line)
@@ -273,7 +286,8 @@ if __name__ == "__main__":
     AdjDict = {}
     AdjList = []
     countAppearance = {}
-    allReviewsList = []
+    reviewListAdj = []
+    allReviewsList = Counter()
 
     for i in range(1,6):
         ratingsDF =  df[df['stars'] == i]
@@ -285,23 +299,18 @@ if __name__ == "__main__":
 
         # Count Rating for 1 Star
         counts_dict = countAdj(AdjList[i-1])
-        print(counts_dict)
+        #print("COUNT ADJ with Duplicates: ",counts_dict)
 
         _starDict = countObs(_StarReview)
-        allReviewsList.append(_starDict)
+        reviewListAdj.append(_starDict)
         print(str(i)," star: ",_starDict)
+        allReviewsList += Counter(_starDict)
 
 
-
-
-
-
-
-
-
+    print("ALL STAR: " ,allReviewsList)
     countAdj([item for sublist in AdjList for item in sublist])
+    computeIndicativeness(allReviewsList, reviewListAdj)
 
-    print(df)
 
     #top_10_num_sentences.append(find_most_frequent(df[df['stars'] == i].to_dict(orient='records'), "num_sentences", 10))
     #top_10_num_sentences.append(find_most_frequent(df[df['stars'] == i].to_dict(orient='records'), "num_sentences", 10))
