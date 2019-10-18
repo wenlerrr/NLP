@@ -140,11 +140,6 @@ def process_review(text):
     del review['date']
     del review['review_id']
 
-    # {"review_id": "fdiNeiN_hoCxCMy2wTRW9g", "user_id": "w31MKYsNFMrjhWxxAb5wIw",
-    #  "business_id": "eU_713ec6fTGNO4BegRaww", "stars": 4.0, "useful": 0, "funny": 0, "cool": 0,
-    #  "text": "I'll be the first to admit that I was not excited about going to La Tavolta. Being a food snob, when a group of friends suggested we go for dinner I looked online at the menu and to me there was nothing special and it seemed overpriced.  Im also not big on ordering pasta when I go out. Alas, I was outnumbered. Thank goodness! I ordered the sea bass special. It was to die for. Cooked perfectly, seasoned perfectly, perfect portion. I can not say enough good things about this dish. When the server asked how it was he seemed very proud of the dish and said, \" doesn't she (the chef) do an incredible job?\" She does. \n\nMy hubby got the crab tortellini and also loved his. I heard \"mmmm this is so good\" from all around the table. Our waiter was super nice and even gave us free desserts because we were some of the last people in the restaurant. Service was very slow and the place was PACKED but we had our jugs of wine and a large group with good conversation so it didn't seem to bother anyone.\n\nSo-\n\nDo order the calamari and fried zucchini appetizers. Leave out the mussels. \n\nIf they have the sea bass special, I highly recommend it. The chicken parm and crab tortellini were also very good and very big. The chicken Romano was a bit bland. The house salads were teeny. \n\nDo make a reservation but still expect to wait for your food. Go with a large group of people and plan for it to be loud. Don't go with a date unless you're fighting and don't feel like hearing anything they have to say.  Ask to sit in the side room if it's available.",
-    #  "date": "2013-01-20 13:25:59"}
-
     sentence_tokenize_list = sent_tokenize(review["text"])
     del review['text']
     # Store result back into review
@@ -157,6 +152,7 @@ def process_review(text):
     neg=[]
     neu=[]
     posTagList = []
+
     for sentence in sentence_tokenize_list:
         word_list = word_tokenize(sentence)
         non_stemmed_words += word_list
@@ -222,7 +218,57 @@ def computeIndicativeness(allReviewsList, reviewListAdj):
             pw = allReviewsList[word] / nWords
             indicative_dict[word] = pw_r * math.log(pw_r / pw)
         indicativeProp.append(indicative_dict)
-        print('top 10 adj for ',i,'star review are: ', Counter(indicative_dict).most_common(10))
+        print("\n===========================================================")
+        print('Top 10 Indicative Adjectives for ',i,'star review by')
+        print(Counter(indicative_dict).most_common(10))
+        print("===========================================================\n")
+
+def nlpApplication(all_pos,all_neg,all_neu):
+    # Sentiment Analysis
+    all_pos_words = all_pos
+    all_neg_words = all_neg
+    all_neu_words = all_neu
+
+    allPosLower = [item.lower() for item in all_pos_words]
+    allNegLower = [item.lower() for item in all_neg_words]
+    allNeuLower = [item.lower() for item in all_neu_words]
+    sid = SentimentIntensityAnalyzer()
+    pos_word_list = []
+    neu_word_list = []
+    neg_word_list = []
+
+    for word in all_stemmed_words:
+        word = word.lower()
+        if (sid.polarity_scores(word)['compound'] >= 0.4) and (word in allPosLower):
+            pos_word_list.append(word)
+        elif (sid.polarity_scores(word)['compound']) <= -0.4 and (word in allNegLower):
+            neg_word_list.append(word)
+        else:
+            neu_word_list.append(word)
+
+    pos_frequency = Counter(pos_word_list).most_common()
+    neu_frequency = Counter(neu_word_list).most_common()
+    neg_frequency = Counter(neg_word_list).most_common()
+
+    pos_frequency = remove_stop_words(pos_frequency)
+    neu_frequency = remove_stop_words(neu_frequency)
+    neg_frequency = remove_stop_words(neg_frequency)
+
+    print("\n=====+====NLP APPLICATION: Sentiment analysis=============")
+    print("\nPositive words frequency")
+    print(len(pos_frequency))
+    for i in range(10):
+        print(pos_frequency[i])
+
+    print("\nNeutral words frequency")
+    print(len(neu_frequency))
+    for i in range(10):
+        print(neu_frequency[i])
+    print("\nNegative words frequency")
+    print(len(neg_frequency))
+    for i in range(10):
+        print(neg_frequency[i])
+    print("===========================================================\n")
 
 
 if __name__ == "__main__":
@@ -230,14 +276,6 @@ if __name__ == "__main__":
     for corpus in ["stopwords", "punkt", "averaged_perceptron_tagger"]:
         check_corpus(corpus)
     stop_words_list = stopwords.words("english") + list(string.punctuation) + stop_words_custom
-
-    # Load data
-    #print("Loading pickle...")
-    # try:
-    #     results, all_non_stemmed_words, all_stemmed_words,all_pos,all_neg,all_neu = pickle.load(open("./raw/save.p", "rb"))
-    #     print("Found pickle!")
-    # except FileNotFoundError:
-    #print("Data is not processed yet. Processing now...")
 
     data = []
     #file_name = './raw/reviewSamples20.json'
@@ -266,18 +304,51 @@ if __name__ == "__main__":
     pool.join()
     print("")  # print linebreak
 
-    # save in pickle
-    #pickle.dump((results, all_non_stemmed_words, all_stemmed_words,all_pos,all_neg,all_neu), open("./raw/save.p", "wb"))
-    # Data set Analysis
-    top_10_user_id = find_most_frequent(results, "user_id", 10)
-    print('\nuser_id')
-    for id, count in top_10_user_id:
-        print(id + ", " + str(count))
 
-    top_10_business_id = find_most_frequent(results, "business_id", 10)
-    print('\ntop_10_business_id')
-    for id, count in top_10_business_id:
-        print(id + ", " + str(count))
+    # Print 5 sample sentences (result from sentence segmentation)
+    random.seed(2004)  # seed to make random the same for consistency
+    n_samples = 5
+    print("\n===========================================================")
+    print("{} sampled sentences".format(n_samples))
+    i = 0
+    while i < 5:
+        sample_review = random.choice(results)
+        sample_sentence_list = sample_review["sentence_tokenize"]
+        sample_sentence = random.choice(sample_sentence_list)
+        if sample_sentence not in stop_words_list:  # sometimes sentence segmentation break "!" into a sentence
+            i += 1
+            print(sample_sentence)
+    print("===========================================================\n")
+
+    # Count words
+    non_stemmed_words_frequency = Counter(all_non_stemmed_words).most_common()
+    stemmed_words_frequency = Counter(all_stemmed_words).most_common()
+
+    # Remove Stop Words (defined on top)
+    non_stemmed_words_frequency = remove_stop_words(non_stemmed_words_frequency)
+    stemmed_words_frequency = remove_stop_words(stemmed_words_frequency)
+
+
+    print("\n===========================================================")
+    print("List the top-20 Non stemmed most frequent words")
+    print(Counter(non_stemmed_words_frequency).most_common(20))
+
+    print("\nList the top-20 stemmed most frequent words")
+    print(Counter(stemmed_words_frequency).most_common(20))
+    print("===========================================================\n")
+
+    # POS Tagging
+    n_samples = 5
+    print("\n===========================================================")
+    print("{} POS Tagging".format(n_samples))
+    for i in range(5):
+        sample_review = random.choice(results)
+        sample_sentence_list = sample_review["sentence_tokenize"]
+        sample_sentence = random.choice(sample_sentence_list)
+        word_tokens = word_tokenize(sample_sentence)
+        print(nltk.pos_tag(word_tokens))
+    print("===========================================================\n")
+
 
     #Partition Results into Stars
     df = pd.DataFrame(results)
@@ -297,117 +368,29 @@ if __name__ == "__main__":
         _StarReview = [subList for subList in l ]
         AdjList.append([item2 for subList in l for item in subList for item2 in item])
 
-        # Count Rating for 1 Star
+        # Count Rating for each Rating
         counts_dict = countAdj(AdjList[i-1])
-        #print("COUNT ADJ with Duplicates: ",counts_dict)
+        #Top 10 most frequent Adj for each Rating
+        print("\n===========================================================")
+        print(str(i),' star: Top 10 most frequent Adjectives for each Rating')
+        print(Counter(counts_dict).most_common(10))
+        print("===========================================================\n")
 
         _starDict = countObs(_StarReview)
         reviewListAdj.append(_starDict)
-        print(str(i)," star: ",_starDict)
+        #print(str(i)," star: ",_starDict)
         allReviewsList += Counter(_starDict)
 
 
-    print("ALL STAR: " ,allReviewsList)
-    countAdj([item for sublist in AdjList for item in sublist])
+    #print("ALL STAR: " ,allReviewsList)
+    #countAdj([item for sublist in AdjList for item in sublist])
     computeIndicativeness(allReviewsList, reviewListAdj)
 
 
-    #top_10_num_sentences.append(find_most_frequent(df[df['stars'] == i].to_dict(orient='records'), "num_sentences", 10))
-    #top_10_num_sentences.append(find_most_frequent(df[df['stars'] == i].to_dict(orient='records'), "num_sentences", 10))
-    top_10_num_non_stemmed_words = find_most_frequent(results, "num_non_stemmed_words", 10)
-    top_10_num_stemmed_words = find_most_frequent(results, "num_stemmed_words", 10)
-
-    # Print 5 sample sentences (result from sentence segmentation)
-    random.seed(2004)  # seed to make random the same for consistency
-    n_samples = 5
-    print("\n{} sampled sentences".format(n_samples))
-    i = 0
-    while i < 5:
-        sample_review = random.choice(results)
-        sample_sentence_list = sample_review["sentence_tokenize"]
-        sample_sentence = random.choice(sample_sentence_list)
-        if sample_sentence not in stop_words_list:  # sometimes sentence segmentation break "!" into a sentence
-            i += 1
-            print(sample_sentence)
-
-    # Count words
-    non_stemmed_words_frequency = Counter(all_non_stemmed_words).most_common()
-    stemmed_words_frequency = Counter(all_stemmed_words).most_common()
-
-    # Remove Stop Words (defined on top)
-    non_stemmed_words_frequency = remove_stop_words(non_stemmed_words_frequency)
-    stemmed_words_frequency = remove_stop_words(stemmed_words_frequency)
-
-    #Sentiment Analysis
-    all_pos_words= all_pos
-    all_neg_words= all_neg
-    all_neu_words= all_neu
-
-    allPosLower = [item.lower() for item in all_pos_words]
-    allNegLower = [item.lower() for item in all_neg_words]
-    allNeuLower = [item.lower() for item in all_neu_words]
-    sid = SentimentIntensityAnalyzer()
-    pos_word_list=[]
-    neu_word_list=[]
-    neg_word_list=[]
-
-    for word in all_stemmed_words:
-        word=word.lower()
-        if (sid.polarity_scores(word)['compound'] >= 0.4) and (word in allPosLower):
-            pos_word_list.append(word)
-        elif (sid.polarity_scores(word)['compound']) <= -0.4 and (word in allNegLower):
-            neg_word_list.append(word)
-        else:
-            neu_word_list.append(word)
-
-    pos_frequency = Counter(pos_word_list).most_common()
-    neu_frequency = Counter(neu_word_list).most_common()
-    neg_frequency = Counter(neg_word_list).most_common()
-
-    pos_frequency = remove_stop_words(pos_frequency)
-    neu_frequency = remove_stop_words(neu_frequency)
-    neg_frequency = remove_stop_words(neg_frequency)
-
-    print("\nList the top-20 most frequent words")
-    print("\nnon_stemmed_words_frequency")
-    for i in range(10):
-        print(non_stemmed_words_frequency[i])
-    print("\nstemmed_words_frequency")
-    for i in range(10):
-        print(stemmed_words_frequency[i])
-
-    print("\npos_words_frequency")
-    print(len(pos_frequency))
-    for i in range(10):
-        print(pos_frequency[i])
-
-    print("\nneu_words_frequency")
-    print(len(neu_frequency))
-    for i in range(10):
-        print(neu_frequency[i])
-    print("\nneg_words_frequency")
-    print(len(neg_frequency))
-    for i in range(10):
-        print(neg_frequency[i])
-
-    # POS Tagging
-    n_samples = 5
-    print("\n{} POS Tagging".format(n_samples))
-    for i in range(5):
-        sample_review = random.choice(results)
-        sample_sentence_list = sample_review["sentence_tokenize"]
-        sample_sentence = random.choice(sample_sentence_list)
-        word_tokens = word_tokenize(sample_sentence)
-        print(nltk.pos_tag(word_tokens))
+    #NLP Application
+    nlpApplication(all_pos, all_neg, all_neu)
 
     # Plotting results
-    plot_frequency(top_10_user_id,
-                   "Top 10 User reviewed",
-                   "No. of User",
-                   "User ID",
-                   "v")
-
-
     for i in range(5):
         plot_frequency(top_10_num_sentences[i],
                        "Top 10 Number Sentences for " + str(i+1) +" star",
@@ -415,13 +398,14 @@ if __name__ == "__main__":
                        "No. of reviews",
                        "h")
 
-
+    top_10_num_non_stemmed_words = find_most_frequent(results, "num_non_stemmed_words", 10)
     plot_frequency(top_10_num_non_stemmed_words,
                    "Top 10 Number of Non-Stemmed Words (unrepeated)",
                    "No. of words",
                    "No. of reviews",
                    "h")
 
+    top_10_num_stemmed_words = find_most_frequent(results, "num_stemmed_words", 10)
     plot_frequency(top_10_num_stemmed_words,
                    "Top 10 Number of Stemmed Words (unrepeated)",
                    "No. of words",
