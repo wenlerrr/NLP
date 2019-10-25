@@ -1,5 +1,4 @@
 import json
-from collections import Counter
 import matplotlib.pyplot as plt
 import nltk
 from nltk.stem import PorterStemmer
@@ -10,33 +9,17 @@ import multiprocessing
 import sys
 import string
 import math
-import pickle
 from collections import Counter
 import pandas as pd
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 nltk.download('vader_lexicon')
 ps = PorterStemmer()  # This is for nltk stemming
-#stop_words_custom = ['n\'t', 'one', 'two', '\'s', 'would', 'get', 'very','...']
-stop_words_custom = []
+
+stop_words_custom = ["'ve","'s","n't","...","\"\"","``","''","'m"]
 jjList = ['JJ', 'JJR', 'JJS']
 
-pd.set_option('display.max_rows', 500)
-pd.set_option('display.max_columns', 500)
-pd.set_option('display.width', 1000)
-
-
-#do_not_stem_list = ["the", "this", "was", "battery", "charge", "because", "very", "verify"]
-do_not_stem_list = []
-# my_stem_ref = {
-#     "charged": "charge",
-#     "charges": "charge",
-#     "charger": "charge",
-#     "charging": "charge",
-#     "batteries": "battery",
-#     "batterys": "battery",
-#     "verified": "verify",
-#     "verifies": "verify"
-# }
+do_not_stem_list = ["the","this","was","very","veri","tri"]
 my_stem_ref = {}
 
 def check_corpus(corpus_name):
@@ -72,9 +55,6 @@ def find_most_frequent(data_list, key, top_n):
     This function receives a list of json objects with keys and corresponding values.
     It counts the number of json objects with identical value of the specified key and sort the result in a list.
     Ex:
-    my_list = [{"name": "John"}, {"name": "Marry"}, {"name": "John"}]
-    result = find_most_frequent(my_list, "name", None)
-    >> result = [("John", 2), ("Marry", 1)]
     :param data_list: a list of json objects
     :param key: the key corresponding to value we want to count
     :param top_n: only return top_n result (if None it will return all the result)
@@ -141,7 +121,6 @@ def process_review(text):
     del review['review_id']
 
     sentence_tokenize_list = sent_tokenize(review["text"])
-    del review['text']
     # Store result back into review
     review["sentence_tokenize"] = sentence_tokenize_list
     review["num_sentences"] = str(len(sentence_tokenize_list))
@@ -224,6 +203,7 @@ def computeIndicativeness(allReviewsList, reviewListAdj):
         print("===========================================================\n")
 
 def nlpApplication(all_pos,all_neg,all_neu):
+    print("\nPlease wait...\n")
     # Sentiment Analysis
     all_pos_words = all_pos
     all_neg_words = all_neg
@@ -268,8 +248,40 @@ def nlpApplication(all_pos,all_neg,all_neu):
     print(len(neg_frequency))
     for i in range(10):
         print(neg_frequency[i])
+
+    sentence = input("Please input a sentence:")
+    sentiment_analyzer_scores(sentence)
+
+def sentiment_analyzer_scores(sentence):
+    analyser = SentimentIntensityAnalyzer()
+    score = analyser.polarity_scores(sentence)
+    print("{:-<40} {}".format(sentence, str(score)))
     print("===========================================================\n")
 
+def plotGraph(top_10_num_sentences,results):
+
+    # Plotting results
+    for i in range(5):
+        plot_frequency(top_10_num_sentences[i],
+                       "Top 10 Number Sentences for " + str(i+1) +" star",
+                       "No. of sentences",
+                       "No. of reviews",
+                       "h")
+
+    top_10_num_non_stemmed_words = find_most_frequent(results, "num_non_stemmed_words", 10)
+    plot_frequency(top_10_num_non_stemmed_words,
+                   "Top 10 Number of Non-Stemmed Words (unrepeated)",
+                   "No. of words",
+                   "No. of reviews",
+                   "h")
+
+    top_10_num_stemmed_words = find_most_frequent(results, "num_stemmed_words", 10)
+    plot_frequency(top_10_num_stemmed_words,
+                   "Top 10 Number of Stemmed Words (unrepeated)",
+                   "No. of words",
+                   "No. of reviews",
+                   "h")
+    plt.show()
 
 if __name__ == "__main__":
     # Load necessary corpus
@@ -320,6 +332,22 @@ if __name__ == "__main__":
             print(sample_sentence)
     print("===========================================================\n")
 
+    # Print 5 sample reviews
+    random.seed(2004)  # seed to make random the same for consistency
+    n_samples = 5
+    print("\n===========================================================")
+    print("{} sampled reviews".format(n_samples))
+    i = 0
+    while i < 5:
+        sample_review = random.choice(results)
+        print("Review Sample ",str(i+1),": \n" ,sample_review['text'],"\n")
+        sample_sentence_list = sample_review["sentence_tokenize"]
+        for sentence in sample_sentence_list:
+            print(sentence)
+        i +=1
+        print("-------------------------")
+    print("===========================================================\n")
+
     # Count words
     non_stemmed_words_frequency = Counter(all_non_stemmed_words).most_common()
     stemmed_words_frequency = Counter(all_stemmed_words).most_common()
@@ -345,8 +373,9 @@ if __name__ == "__main__":
         sample_review = random.choice(results)
         sample_sentence_list = sample_review["sentence_tokenize"]
         sample_sentence = random.choice(sample_sentence_list)
+        print(sample_sentence)
         word_tokens = word_tokenize(sample_sentence)
-        print(nltk.pos_tag(word_tokens))
+        print(nltk.pos_tag(word_tokens),"\n")
     print("===========================================================\n")
 
 
@@ -364,7 +393,6 @@ if __name__ == "__main__":
         ratingsDF =  df[df['stars'] == i]
         top_10_num_sentences.append(find_most_frequent(ratingsDF.to_dict(orient='records'), "num_sentences", 10))
         l = list(df[df['stars'] == i]['posTag'])
-        # _StarReview = [item for subList in l for item in subList]
         _StarReview = [subList for subList in l ]
         AdjList.append([item2 for subList in l for item in subList for item2 in item])
 
@@ -378,40 +406,21 @@ if __name__ == "__main__":
 
         _starDict = countObs(_StarReview)
         reviewListAdj.append(_starDict)
-        #print(str(i)," star: ",_starDict)
         allReviewsList += Counter(_starDict)
 
-
-    #print("ALL STAR: " ,allReviewsList)
-    #countAdj([item for sublist in AdjList for item in sublist])
+    #Copute Indicativness of Adj
     computeIndicativeness(allReviewsList, reviewListAdj)
 
 
     #NLP Application
     nlpApplication(all_pos, all_neg, all_neu)
 
-    # Plotting results
-    for i in range(5):
-        plot_frequency(top_10_num_sentences[i],
-                       "Top 10 Number Sentences for " + str(i+1) +" star",
-                       "No. of sentences",
-                       "No. of reviews",
-                       "h")
+    choice = int(input('Show Graphs?:\n1. Yes\n2. No\nEnter Choice:'))
+    if choice ==1:
+        #Plot Graphs for top 10 non-stemmed and stemmed words
+        plotGraph(top_10_num_sentences, results)
 
-    top_10_num_non_stemmed_words = find_most_frequent(results, "num_non_stemmed_words", 10)
-    plot_frequency(top_10_num_non_stemmed_words,
-                   "Top 10 Number of Non-Stemmed Words (unrepeated)",
-                   "No. of words",
-                   "No. of reviews",
-                   "h")
 
-    top_10_num_stemmed_words = find_most_frequent(results, "num_stemmed_words", 10)
-    plot_frequency(top_10_num_stemmed_words,
-                   "Top 10 Number of Stemmed Words (unrepeated)",
-                   "No. of words",
-                   "No. of reviews",
-                   "h")
-    plt.show()
 
 
     
