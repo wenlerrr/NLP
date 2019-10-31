@@ -17,6 +17,7 @@ pip install numpy
 pip install multiprocessing
 pip install Counter
 pip install SentimentIntensityAnalyzer
+pip install spacy
 
 ```
 
