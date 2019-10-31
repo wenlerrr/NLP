@@ -11,6 +11,8 @@ import string
 import math
 from collections import Counter
 import pandas as pd
+import copy
+import time
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 nltk.download('vader_lexicon')
@@ -19,8 +21,17 @@ ps = PorterStemmer()  # This is for nltk stemming
 stop_words_custom = ["'ve","'s","n't","...","\"\"","``","''","'m"]
 jjList = ['JJ', 'JJR', 'JJS']
 
-do_not_stem_list = ["the","this","was","very","veri","tri"]
-my_stem_ref = {}
+do_not_stem_list = ["the","this","was","very",'really']
+my_stem_ref = {'got':'get',
+'gotten':'get',
+'getting':'get',
+'try':'try',
+'tried':'try',
+'tries':'try',
+'trying':'try',
+}
+
+set_really = set()
 
 def check_corpus(corpus_name):
     """
@@ -131,7 +142,6 @@ def process_review(text):
     neg=[]
     neu=[]
     posTagList = []
-
     for sentence in sentence_tokenize_list:
         word_list = word_tokenize(sentence)
         non_stemmed_words += word_list
@@ -169,7 +179,7 @@ def log_result(retrieval):
 
 #Most Frequent Adjectives for each Rating.
 def countAdj(Adjs):
-    counts = Counter(x[0] for x in Adjs if x[1] in jjList)
+    counts = Counter(x[0].lower() for x in Adjs if x[1] in jjList)
     counts_dict = dict(counts.most_common(10))
     return counts_dict
 
@@ -180,7 +190,7 @@ def countObs(_StarReview):
         for sentence in review:
             for x in sentence:
                 if x[1] in jjList:
-                    set_of_adj.add(x[0])
+                    set_of_adj.add(x[0].lower())
         for item in set_of_adj:
             _starDict[item] = _starDict.get(item, 0) + 1
     return _starDict
