@@ -13,6 +13,7 @@ from collections import Counter
 import pandas as pd
 import copy
 import time
+import numpy as np
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 nltk.download('vader_lexicon')
@@ -30,8 +31,6 @@ my_stem_ref = {'got':'get',
 'tries':'try',
 'trying':'try',
 }
-
-set_really = set()
 
 def check_corpus(corpus_name):
     """
@@ -79,6 +78,10 @@ def find_most_frequent(data_list, key, top_n):
         return [result[i] for i in range(top_n)]
     return result
 
+def count_freq(data_list, key):
+    attr_list = [item[key] for item in data_list]
+    result = Counter(attr_list)
+    return list(result.items())
 
 def plot_frequency(result,
                    title,
@@ -114,6 +117,39 @@ def plot_frequency(result,
     plt.ylabel(y_label)
     plt.savefig('./output/{}.png'.format(title))
 
+def plot_all_frequency(result,
+                   title,
+                   x_label,
+                   y_label,
+                   bar_direction):
+    """
+    Plot bar graphs
+    :param result: a list of tuple from "find_most_frequent" function
+    :param title: title of the graph
+    :param x_label: x-axis legend
+    :param y_label: y-axis legend
+    :param bar_direction: "v" for vertical or "h" for horizontal
+    """
+    # setup the plot
+    fig, ax = plt.subplots()
+    plt.title(title)
+    y = [item[1] for item in result]
+
+    x = [item[0] for item in result]
+    if bar_direction == "v":
+        y.reverse()
+        x.reverse()
+        ax.barh(x, y, color="blue")
+        for i, v in enumerate(y):
+            ax.text(v, i, " " + str(v), color='blue', va='center', fontweight='bold')
+        plt.subplots_adjust(left=0.3)
+    else:
+        ax.bar(x, y, color="blue")
+        
+    plt.xlabel(x_label)
+    plt.xticks(np.arange(min(list(map(int,x))), max(list(map(int, x)))+1, 5.0))
+    plt.ylabel(y_label)
+    plt.savefig('./output/{}.png'.format(title))
 
 def remove_stop_words(counted_list):
     """
@@ -268,10 +304,17 @@ def sentiment_analyzer_scores(sentence):
     print("{:-<40} {}".format(sentence, str(score)))
     print("===========================================================\n")
 
-def plotGraph(top_10_num_sentences,results):
+def plotGraph(top_10_num_sentences,sentence_freq, results):
 
-    # Plotting results
+    #Plotting results
+
     for i in range(5):
+        plot_all_frequency(sorted(sentence_freq[i], key=lambda tup: int(tup[0])),
+                    "Distribution of number of sentences for " + str(i+1) +" star",
+                    "No. of sentences",
+                       "No. of reviews",
+                       "h")
+
         plot_frequency(top_10_num_sentences[i],
                        "Top 10 Number Sentences for " + str(i+1) +" star",
                        "No. of sentences",
@@ -300,7 +343,7 @@ if __name__ == "__main__":
     stop_words_list = stopwords.words("english") + list(string.punctuation) + stop_words_custom
 
     data = []
-    #file_name = './raw/reviewSamples20.json'
+    # file_name = './raw/reviewSamples20.json'
     file_name = './raw/reviewSelected100.json'
     with open(file_name) as file:
         for line in file:
@@ -398,10 +441,15 @@ if __name__ == "__main__":
     countAppearance = {}
     reviewListAdj = []
     allReviewsList = Counter()
+    sentence_freq=[]
 
     for i in range(1,6):
         ratingsDF =  df[df['stars'] == i]
         top_10_num_sentences.append(find_most_frequent(ratingsDF.to_dict(orient='records'), "num_sentences", 10))
+        print('find mst freq',top_10_num_sentences)
+        sentence_freq.append(list(count_freq(ratingsDF.to_dict(orient='records'), "num_sentences")))
+        print('find mst freq',sentence_freq)
+
         l = list(df[df['stars'] == i]['posTag'])
         _StarReview = [subList for subList in l ]
         AdjList.append([item2 for subList in l for item in subList for item2 in item])
@@ -428,7 +476,8 @@ if __name__ == "__main__":
     choice = int(input('Show Graphs?:\n1. Yes\n2. No\nEnter Choice:'))
     if choice ==1:
         #Plot Graphs for top 10 non-stemmed and stemmed words
-        plotGraph(top_10_num_sentences, results)
+        plotGraph(top_10_num_sentences, sentence_freq,results)
+     
 
 
 
