@@ -52,10 +52,10 @@ def get_chunks(tagged_sentences):
     master_adj = []
     grammar = r"""
     CHUNK1:
-        {<NN.*><.*>?<JJ.*>}  # Any Noun terminated with Any Adjective
+        {<NN.*><.*>{0,3}<JJ.*>}  # Any Noun terminated with Any Adjective
     
     CHUNK2:
-        {<NN.*|JJ.*><.*>?<NN.*>}  # Nouns or Adjectives, terminated with Nouns
+        {<JJ.*><.*>{0,3}<NN.*>}  # Nouns or Adjectives, terminated with Nouns
     """
     cp = RegexpParser(grammar)
     for sent in tagged_sentences:
@@ -83,9 +83,26 @@ def mergeCommon(arrayCountDict):
             invertedTempTuple = (ll[1], ll[0])
             if(invertedTempTuple in naPairs):
                 continue
+            # elif(tempTuple[0] == 'i' or tempTuple[1] == 'i'):
+            #     continue
             else:
                 naPairs.add(tempTuple)
                 tempList1.append((tempTuple[0]+":"+tempTuple[1], count))
+        arrayCountDict[key] = tempList1
+    return arrayCountDict
+
+def filterCountDict(arrayCountDict):
+    for key in arrayCountDict:
+        tempList1 = []
+        for j in range(len(arrayCountDict[key])):
+            count = copy.deepcopy(arrayCountDict[key][j][1])
+            ll = arrayCountDict[key][j][0].split(":")
+            if(ll[0] == 'i' or ll[1] == 'i'):
+                continue
+            elif(ll[0] == ll[1]):
+                continue
+            else:
+                tempList1.append((ll[0]+":"+ll[1], count))
         arrayCountDict[key] = tempList1
     return arrayCountDict
 
@@ -142,16 +159,32 @@ arrayCountDict = {}
 for key in countDict:
     arrayCountDict[key] = sortBizNounAdjFreq(countDict[key])
 
-arrayCountDict = mergeCommon(arrayCountDict)
+arrayCountDict = filterCountDict(mergeCommon(arrayCountDict))
 
 for key in arrayCountDict:
     print("Noun-adjective pairs for " + key + ":")
     print(arrayCountDict[key])
-#ZBE-H_aUlicix_9vUGQPIQ: food:good(7), food:great(6), place:great(5),food:average(4),service:great(4)
-#e-YnECeZNt8ngm0tu4X9mQ: food:good(8),place:good(4),service:great(4),bbq:authentic(4),staff:attentive(3)
-#j7HO1YeMQGYo3KibMXZ5vg: food:good(8), portions:huge(6), bit:little(4), service:good(4), service:great(4)
-#7e3PZzUpG5FYOTGt3O3ePA: service:excellent(7), food:great(5), price:reasonable(4), food:good(4), service:great(4)
-#vuHzLZ7nAeT-EiecOkS5Og: service:great(7), service:crappy(5), job:great(4), reviews:negative(4), brand:new(4)
+#ZBE-H_aUlicix_9vUGQPIQ: food:good(15), time:first(6), staff:friendly(5),food:great(5),place:great(5)
+#e-YnECeZNt8ngm0tu4X9mQ: grill:korean(15),bbq:korean(13),service:good(8),food:good(8),place:good(6)
+#j7HO1YeMQGYo3KibMXZ5vg: food:good(7), food:hawaiian(7), rice:fried(6), portions:huge(6), food:great(6)
+#7e3PZzUpG5FYOTGt3O3ePA: food:good(8), food:great(7), service:good(6), place:nice(5), rib:prime(5)
+#vuHzLZ7nAeT-EiecOkS5Og: day:next(8), service:great(6), pool:green(5), service:crappy(5), customer:horrible(3)
 
-
-
+# Generate example tree
+from nltk import Tree
+sentence = "We got our food fairly quick which made it a great stop for lunch."
+sentss = sent_tokenize(sentence.lower())
+sentss2 = []
+for each_sent in sentss:
+  sentss2.extend([word_tokenize(each_sent)])
+tags = tagged_sents(sentss2)
+grammar = r"""
+    CHUNK1:
+        {<NN.*><.*>{0,3}<JJ.*>}  # Any Noun terminated with Any Adjective
+    
+    CHUNK2:
+        {<JJ.*><.*>{0,3}<NN.*>}  # Nouns or Adjectives, terminated with Nouns
+    """
+cp = RegexpParser(grammar)
+tree = cp.parse(tags[0])
+Tree.fromstring(str(tree)).pretty_print()
