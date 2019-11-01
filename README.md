@@ -1,12 +1,10 @@
 ## Product Review Data Analysis
 
-An NLP project for CZ4045 - Natural Language Processing by Group 13.
+An NLP project for CZ4045 - Natural Language Processing by Group 10.
 
-The 4 parts for this project include:
-1. Dataset analysis
-2. Building a noun phrase detector
-3. Sentiment analysis on reviews
-4. Application - Comparative Expression on reviews
+The 2 parts for this project include:
+1. Dataset analysis + NLP Application
+2. Noun - Adjective Pair Summarizer
 
 ### Libraries and installation:
 
@@ -16,36 +14,26 @@ pip install nltk
 pip install pandas
 pip install matplotlib
 pip install numpy
-```
+pip install multiprocessing
+pip install Counter
+pip install SentimentIntensityAnalyzer
+pip install spacy
 
-or
-
-```
-pip install -r requirements.txt
 ```
 
  ===================
-| Dataset Analysis & Sentiment Analysis|
+| Dataset Analysis & NLP Application|
  ===================
 
-To perform Data Analysis and Sentiment Analysis, run the following command:
+To perform Data Analysis and NLP Application, run the following command:
 
 ```
-cd CZ4045-Group13/src/
 python data_analysis.py
 ```
 
  ======================
-| Noun Phrase Detector |
+| Noun - Adjective Pair Summarizer |
  ======================
 ```
-cd CZ4045-Group13/src/
-python noun_phrase_summarizer.py
-```
- ========================
-| Comparative Expression |
- ========================
-```
-cd CZ4045-Group13/src/
-python comparativeExpr.py
+python noun_adjective_pairs.py
 ```

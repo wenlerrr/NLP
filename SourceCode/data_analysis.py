@@ -11,6 +11,9 @@ import string
 import math
 from collections import Counter
 import pandas as pd
+import copy
+import time
+import numpy as np
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 nltk.download('vader_lexicon')
@@ -19,8 +22,15 @@ ps = PorterStemmer()  # This is for nltk stemming
 stop_words_custom = ["'ve","'s","n't","...","\"\"","``","''","'m"]
 jjList = ['JJ', 'JJR', 'JJS']
 
-do_not_stem_list = ["the","this","was","very","veri","tri"]
-my_stem_ref = {}
+do_not_stem_list = ["the","this","was","very",'really']
+my_stem_ref = {'got':'get',
+'gotten':'get',
+'getting':'get',
+'try':'try',
+'tried':'try',
+'tries':'try',
+'trying':'try',
+}
 
 def check_corpus(corpus_name):
     """
@@ -68,6 +78,10 @@ def find_most_frequent(data_list, key, top_n):
         return [result[i] for i in range(top_n)]
     return result
 
+def count_freq(data_list, key):
+    attr_list = [item[key] for item in data_list]
+    result = Counter(attr_list)
+    return list(result.items())
 
 def plot_frequency(result,
                    title,
@@ -103,6 +117,41 @@ def plot_frequency(result,
     plt.ylabel(y_label)
     plt.savefig('./output/{}.png'.format(title))
 
+def plot_all_frequency(result,
+                   title,
+                   x_label,
+                   y_label,
+                   bar_direction,tick_freq):
+    """
+    Plot bar graphs
+    :param result: a list of tuple from "find_most_frequent" function
+    :param title: title of the graph
+    :param x_label: x-axis legend
+    :param y_label: y-axis legend
+    :param bar_direction: "v" for vertical or "h" for horizontal
+    """
+    # setup the plot
+    fig, ax = plt.subplots()
+    plt.title(title)
+    y = [item[1] for item in result]
+
+    x = [item[0] for item in result]
+    if bar_direction == "v":
+        y.reverse()
+        x.reverse()
+        ax.barh(x, y, color="blue")
+        for i, v in enumerate(y):
+            ax.text(v, i, " " + str(v), color='blue', va='center', fontweight='bold')
+        plt.subplots_adjust(left=0.3)
+    else:
+        ax.bar(x, y, color="blue")
+        
+    plt.xlabel(x_label)
+    # plt.xticks(np.arange(min(list(map(int,x))), max(list(map(int, x)))+1, 5.0))
+    plt.xticks(np.arange(0, max(list(map(int, x)))+1, int(tick_freq)))
+
+    plt.ylabel(y_label)
+    plt.savefig('./output/{}.png'.format(title))
 
 def remove_stop_words(counted_list):
     """
@@ -131,7 +180,6 @@ def process_review(text):
     neg=[]
     neu=[]
     posTagList = []
-
     for sentence in sentence_tokenize_list:
         word_list = word_tokenize(sentence)
         non_stemmed_words += word_list
@@ -169,7 +217,7 @@ def log_result(retrieval):
 
 #Most Frequent Adjectives for each Rating.
 def countAdj(Adjs):
-    counts = Counter(x[0] for x in Adjs if x[1] in jjList)
+    counts = Counter(x[0].lower() for x in Adjs if x[1] in jjList)
     counts_dict = dict(counts.most_common(10))
     return counts_dict
 
@@ -180,13 +228,12 @@ def countObs(_StarReview):
         for sentence in review:
             for x in sentence:
                 if x[1] in jjList:
-                    set_of_adj.add(x[0])
+                    set_of_adj.add(x[0].lower())
         for item in set_of_adj:
             _starDict[item] = _starDict.get(item, 0) + 1
     return _starDict
 
 def computeIndicativeness(allReviewsList, reviewListAdj):
-    indicativeProp = []
     nWords = sum(allReviewsList.values())
 
     for i in range (1,6):
@@ -196,7 +243,6 @@ def computeIndicativeness(allReviewsList, reviewListAdj):
             pw_r = reviewListAdj[i - 1][word] / nWordsRating
             pw = allReviewsList[word] / nWords
             indicative_dict[word] = pw_r * math.log(pw_r / pw)
-        indicativeProp.append(indicative_dict)
         print("\n===========================================================")
         print('Top 10 Indicative Adjectives for ',i,'star review by')
         print(Counter(indicative_dict).most_common(10))
@@ -258,10 +304,17 @@ def sentiment_analyzer_scores(sentence):
     print("{:-<40} {}".format(sentence, str(score)))
     print("===========================================================\n")
 
-def plotGraph(top_10_num_sentences,results):
+def plotGraph(top_10_num_sentences,sentence_freq, results):
 
-    # Plotting results
+    #Plotting results
+
     for i in range(5):
+        plot_all_frequency(sorted(sentence_freq[i], key=lambda tup: int(tup[0])),
+                    "Distribution of number of sentences for " + str(i+1) +" star",
+                    "No. of sentences",
+                       "No. of reviews",
+                       "h",5)
+
         plot_frequency(top_10_num_sentences[i],
                        "Top 10 Number Sentences for " + str(i+1) +" star",
                        "No. of sentences",
@@ -270,17 +323,31 @@ def plotGraph(top_10_num_sentences,results):
 
     top_10_num_non_stemmed_words = find_most_frequent(results, "num_non_stemmed_words", 10)
     plot_frequency(top_10_num_non_stemmed_words,
-                   "Top 10 Number of Non-Stemmed Words (unrepeated)",
-                   "No. of words",
+                   "Top 10 length of review ( before stemming)",
+                   "No. of tokens",
                    "No. of reviews",
                    "h")
 
     top_10_num_stemmed_words = find_most_frequent(results, "num_stemmed_words", 10)
     plot_frequency(top_10_num_stemmed_words,
-                   "Top 10 Number of Stemmed Words (unrepeated)",
-                   "No. of words",
+                   "Top 10 length of review ( after stemming)",
+                   "No. of tokens",
                    "No. of reviews",
                    "h")
+
+    review_length_distribution_nonstem=list(count_freq(results, "num_non_stemmed_words"))
+    plot_all_frequency(sorted(review_length_distribution_nonstem, key=lambda tup: int(tup[0])),
+                   "Distribution of length of review (before stemming)",
+                   "No. of tokens",
+                   "No. of reviews",
+                   "h",20)
+
+    review_length_distribution_stem=list(count_freq(results, "num_stemmed_words"))
+    plot_all_frequency(sorted(review_length_distribution_stem, key=lambda tup: int(tup[0])),
+                   "Distribution of length of review (after stemming)",
+                   "No. of tokens",
+                   "No. of reviews",
+                   "h",20)
     plt.show()
 
 if __name__ == "__main__":
@@ -290,7 +357,7 @@ if __name__ == "__main__":
     stop_words_list = stopwords.words("english") + list(string.punctuation) + stop_words_custom
 
     data = []
-    #file_name = './raw/reviewSamples20.json'
+    # file_name = './raw/reviewSamples20.json'
     file_name = './raw/reviewSelected100.json'
     with open(file_name) as file:
         for line in file:
@@ -388,10 +455,13 @@ if __name__ == "__main__":
     countAppearance = {}
     reviewListAdj = []
     allReviewsList = Counter()
+    sentence_freq=[]
 
     for i in range(1,6):
         ratingsDF =  df[df['stars'] == i]
         top_10_num_sentences.append(find_most_frequent(ratingsDF.to_dict(orient='records'), "num_sentences", 10))
+        sentence_freq.append(list(count_freq(ratingsDF.to_dict(orient='records'), "num_sentences")))
+
         l = list(df[df['stars'] == i]['posTag'])
         _StarReview = [subList for subList in l ]
         AdjList.append([item2 for subList in l for item in subList for item2 in item])
@@ -418,7 +488,8 @@ if __name__ == "__main__":
     choice = int(input('Show Graphs?:\n1. Yes\n2. No\nEnter Choice:'))
     if choice ==1:
         #Plot Graphs for top 10 non-stemmed and stemmed words
-        plotGraph(top_10_num_sentences, results)
+        plotGraph(top_10_num_sentences, sentence_freq,results)
+     
 
 
 
