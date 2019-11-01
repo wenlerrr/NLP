@@ -147,7 +147,9 @@ def plot_all_frequency(result,
         ax.bar(x, y, color="blue")
         
     plt.xlabel(x_label)
-    plt.xticks(np.arange(min(list(map(int,x))), max(list(map(int, x)))+1, 5.0))
+    # plt.xticks(np.arange(min(list(map(int,x))), max(list(map(int, x)))+1, 5.0))
+    plt.xticks(np.arange(0, max(list(map(int, x)))+1, 5.0))
+
     plt.ylabel(y_label)
     plt.savefig('./output/{}.png'.format(title))
 
@@ -446,9 +448,7 @@ if __name__ == "__main__":
     for i in range(1,6):
         ratingsDF =  df[df['stars'] == i]
         top_10_num_sentences.append(find_most_frequent(ratingsDF.to_dict(orient='records'), "num_sentences", 10))
-        print('find mst freq',top_10_num_sentences)
         sentence_freq.append(list(count_freq(ratingsDF.to_dict(orient='records'), "num_sentences")))
-        print('find mst freq',sentence_freq)
 
         l = list(df[df['stars'] == i]['posTag'])
         _StarReview = [subList for subList in l ]
