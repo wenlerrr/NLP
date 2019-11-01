@@ -121,7 +121,7 @@ def plot_all_frequency(result,
                    title,
                    x_label,
                    y_label,
-                   bar_direction):
+                   bar_direction,tick_freq):
     """
     Plot bar graphs
     :param result: a list of tuple from "find_most_frequent" function
@@ -148,7 +148,7 @@ def plot_all_frequency(result,
         
     plt.xlabel(x_label)
     # plt.xticks(np.arange(min(list(map(int,x))), max(list(map(int, x)))+1, 5.0))
-    plt.xticks(np.arange(0, max(list(map(int, x)))+1, 5.0))
+    plt.xticks(np.arange(0, max(list(map(int, x)))+1, int(tick_freq)))
 
     plt.ylabel(y_label)
     plt.savefig('./output/{}.png'.format(title))
@@ -234,7 +234,6 @@ def countObs(_StarReview):
     return _starDict
 
 def computeIndicativeness(allReviewsList, reviewListAdj):
-    indicativeProp = []
     nWords = sum(allReviewsList.values())
 
     for i in range (1,6):
@@ -244,7 +243,6 @@ def computeIndicativeness(allReviewsList, reviewListAdj):
             pw_r = reviewListAdj[i - 1][word] / nWordsRating
             pw = allReviewsList[word] / nWords
             indicative_dict[word] = pw_r * math.log(pw_r / pw)
-        indicativeProp.append(indicative_dict)
         print("\n===========================================================")
         print('Top 10 Indicative Adjectives for ',i,'star review by')
         print(Counter(indicative_dict).most_common(10))
@@ -315,7 +313,7 @@ def plotGraph(top_10_num_sentences,sentence_freq, results):
                     "Distribution of number of sentences for " + str(i+1) +" star",
                     "No. of sentences",
                        "No. of reviews",
-                       "h")
+                       "h",5)
 
         plot_frequency(top_10_num_sentences[i],
                        "Top 10 Number Sentences for " + str(i+1) +" star",
@@ -325,17 +323,31 @@ def plotGraph(top_10_num_sentences,sentence_freq, results):
 
     top_10_num_non_stemmed_words = find_most_frequent(results, "num_non_stemmed_words", 10)
     plot_frequency(top_10_num_non_stemmed_words,
-                   "Top 10 Number of Non-Stemmed Words (unrepeated)",
-                   "No. of words",
+                   "Top 10 length of review ( before stemming)",
+                   "No. of tokens",
                    "No. of reviews",
                    "h")
 
     top_10_num_stemmed_words = find_most_frequent(results, "num_stemmed_words", 10)
     plot_frequency(top_10_num_stemmed_words,
-                   "Top 10 Number of Stemmed Words (unrepeated)",
-                   "No. of words",
+                   "Top 10 length of review ( after stemming)",
+                   "No. of tokens",
                    "No. of reviews",
                    "h")
+
+    review_length_distribution_nonstem=list(count_freq(results, "num_non_stemmed_words"))
+    plot_all_frequency(sorted(review_length_distribution_nonstem, key=lambda tup: int(tup[0])),
+                   "Distribution of length of review (before stemming)",
+                   "No. of tokens",
+                   "No. of reviews",
+                   "h",20)
+
+    review_length_distribution_stem=list(count_freq(results, "num_stemmed_words"))
+    plot_all_frequency(sorted(review_length_distribution_stem, key=lambda tup: int(tup[0])),
+                   "Distribution of length of review (after stemming)",
+                   "No. of tokens",
+                   "No. of reviews",
+                   "h",20)
     plt.show()
 
 if __name__ == "__main__":
